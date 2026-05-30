@@ -21,6 +21,7 @@ app.get('/api/tags', async (req, res) => {
 
 // Mirror POST /api/chat
 app.post('/api/chat', async (req, res) => {
+	console.log("Getting smth...", req.body)
   try {
     const response = await fetch(`${OLLAMA_URL}/api/chat`, {
       method: 'POST',
