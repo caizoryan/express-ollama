@@ -6,8 +6,9 @@ const PORT = 3000;
 app.get('/api', async (req, res) => {
   let response = await fetch('http://127.0.0.1:11434/api/tags');
 	console.log("GOT", response)
-	response = response.json()
+	response = await response.json()
 	console.log(response)
+	res.send({data: response})
 });
 
 app.listen(PORT, () => {
