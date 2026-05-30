@@ -4,7 +4,7 @@ const app = express();
 const PORT = 3000;
 const OLLAMA_URL = 'http://127.0.0.1:11434';
 
-app.use(express.json());
+app.use(express.json({limit: '50mb'}));
 
 // Mirror GET /api/tags
 app.get('/api/tags', async (req, res) => {
@@ -21,18 +21,14 @@ app.get('/api/tags', async (req, res) => {
 
 // Mirror POST /api/chat
 app.post('/api/chat', async (req, res) => {
-	console.log("Getting smth...", req.body)
   try {
     const response = await fetch(`${OLLAMA_URL}/api/chat`, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
+      headers: { 'Content-Type': 'application/json', },
       body: JSON.stringify(req.body),
     });
 
     const data = await response.json();
-
     res.status(response.status).json(data);
   } catch (err) {
     console.error(err);
@@ -52,7 +48,6 @@ app.post('/api/generate', async (req, res) => {
     });
 
     const data = await response.json();
-
     res.status(response.status).json(data);
   } catch (err) {
     console.error(err);
