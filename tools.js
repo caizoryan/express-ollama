@@ -1,44 +1,49 @@
-const fs = require("fs");
-
-async function ocrImage(imagePath) {
-  const imageBase64 = fs.readFileSync(imagePath, {
-    encoding: "base64",
-  });
-
-  const response = await fetch("http://100.85.209.5:3000/api/chat", {
+const response = await fetch("http://127.0.0.1:11434/api/chat", {
     method: "POST",
     headers: {
-      "Content-Type": "application/json",
+        "Content-Type": "application/json",
     },
     body: JSON.stringify({
-      model: "qwen3.5:9b", // or gemma3, etc.
-      stream: false,
-      think: false,
-      messages: [
-        {
-          role: "user",
-          content:
-            "Perform OCR on this image. Return all visible text exactly as written.",
-          images: [imageBase64],
-        },
-      ],
+        model: "qwen3.5:0.8b",
+        think: false,
+        stream: true, // enable streaming
+        messages: [
+            {
+                role: "user",
+                content: "A js function for fibonacci number.",
+            },
+        ],
     }),
-  });
+});
 
-  if (!response.ok) {
-    throw new Error(
-      `Ollama request failed: ${response.status} ${response.statusText}`
-    );
-  }
-
-  const result = await response.json();
-
-  console.log("OCR Result:");
-  console.log(result.message.content);
-
-  return result.message.content;
+if (!response.ok) {
+    throw new Error(`Ollama request failed: ${response.status} ${response.statusText}`);
 }
 
-ocrImage("./image.png")
-  .then(() => console.log("Done"))
-  .catch(console.error);
+const reader = response.body.getReader();
+const decoder = new TextDecoder();
+
+let fullContent = "";
+
+while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+
+    // Each chunk may contain multiple newline-separated JSON objects
+    const lines = decoder.decode(value, { stream: true }).split("\n").filter(Boolean);
+
+    for (const line of lines) {
+        const chunk = JSON.parse(line);
+
+        if (chunk.message?.content) {
+            fullContent += chunk.message.content;
+            process.stdout.write(chunk.message.content); // print token as it arrives
+        }
+
+        // chunk.done === true means the stream is finished
+        if (chunk.done) {
+            console.log("\n--- Stream complete ---");
+            // chunk.eval_count, chunk.prompt_eval_count etc. are available here
+        }
+    }
+}
