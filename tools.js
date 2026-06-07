@@ -1,53 +1,55 @@
-async function init(){
-	const response = await fetch("http://127.0.0.1:11434/api/chat", {
-			method: "POST",
-			headers: {
-					"Content-Type": "application/json",
-			},
-			body: JSON.stringify({
-					model: "qwen3.5:0.8b",
-					think: false,
-					stream: true, // enable streaming
-					messages: [
-							{
-									role: "user",
-									content: "A js function for fibonacci number.",
-							},
-					],
-			}),
-	});
-
-	if (!response.ok) {
-			throw new Error(`Ollama request failed: ${response.status} ${response.statusText}`);
-	}
-
-	const reader = response.body.getReader();
-	const decoder = new TextDecoder();
-
-	let fullContent = "";
-
-	while (true) {
-			const { done, value } = await reader.read();
-			if (done) break;
-
-			// Each chunk may contain multiple newline-separated JSON objects
-			const lines = decoder.decode(value, { stream: true }).split("\n").filter(Boolean);
-
-			for (const line of lines) {
-					const chunk = JSON.parse(line);
-
-					if (chunk.message?.content) {
-							fullContent += chunk.message.content;
-							process.stdout.write(chunk.message.content); // print token as it arrives
-					}
-
-					// chunk.done === true means the stream is finished
-					if (chunk.done) {
-							console.log("\n--- Stream complete ---");
-							// chunk.eval_count, chunk.prompt_eval_count etc. are available here
-					}
-			}
-	}
+import fs from "fs";
+export const writeFileTool = {
+  name: "write_file",
+  description: "Create a file with the provided content.",
+  parameters: {
+    type: "object",
+    properties: {
+      file_path: { type: "string", description: "Absolute or relative file path." },
+      content: { type: "string", description: "Content to write into the file." },
+    },
+    required: ["file_path", "content"]
+  }
 }
 
-init()
+export const readFileTool = {
+  name: "read_file",
+  description: "Read the contents of a file from the local filesystem.",
+  parameters: {
+    type: "object",
+    properties: {
+      file_path: { type: "string", description: "Path to the file to read." },
+    },
+    required: ["file_path"]
+  }
+};
+
+export function readFile({ file_path, encoding = "utf-8" }) {
+  try {
+    const content = fs.readFileSync(file_path, encoding);
+    return {
+      success: true,
+      content
+    };
+  } catch (error) {
+    return {
+      success: false,
+      error: error.message
+    };
+  }
+}
+
+export function writeFile({ file_path, content, encoding = "utf-8" }) {
+  try {
+    fs.writeFileSync(file_path, content, encoding);
+    return {
+      success: true,
+      bytesWritten: Buffer.byteLength(content, encoding)
+    };
+  } catch (error) {
+    return {
+      success: false,
+      error: error.message
+    };
+  }
+}
