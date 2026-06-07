@@ -1,16 +1,4 @@
 import fs from "fs";
-export const writeFileTool = {
-  name: "write_file",
-  description: "Create a file with the provided content.",
-  parameters: {
-    type: "object",
-    properties: {
-      file_path: { type: "string", description: "Absolute or relative file path." },
-      content: { type: "string", description: "Content to write into the file." },
-    },
-    required: ["file_path", "content"]
-  }
-}
 
 export const readFileTool = {
   name: "read_file",
@@ -36,6 +24,20 @@ export function readFile({ file_path, encoding = "utf-8" }) {
       success: false,
       error: error.message
     };
+  }
+}
+
+
+export const writeFileTool = {
+  name: "write_file",
+  description: "Create a file with the provided content.",
+  parameters: {
+    type: "object",
+    properties: {
+      file_path: { type: "string", description: "Absolute or relative file path." },
+      content: { type: "string", description: "Content to write into the file." },
+    },
+    required: ["file_path", "content"]
   }
 }
 

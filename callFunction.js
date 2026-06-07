@@ -1,57 +1,54 @@
-import { readFile, writeFile, readFileTool, writeFileTool } from './tools.js'
+import { readFile, writeFile } from './tools.js'
+import { messages } from './message.js'
 
-// # TODO
-// rewrite this file so that all logic is retained.
-//
+const REQUIRED_ARGS = {
+  read_file: ['file_path'],
+  write_file: ['file_path', 'content'],
+}
 
-export function callFunction(toolCall){
-	console.log('Dawg wants to call: ', toolCall.function.name)
-	if (toolCall.function.name == 'read_file'){
-		loopAround = true
-		if (!toolCall.function.arguments.file_path){
-			messages.push({
-				role: 'user',
-				content: "Tool call failed because argument 'file_path' was not there. If you used a different parameter name, re-do tool call with 'file_path' as argument"
-			})
-			return
-		}
-		messages.push(part.message)
-		console.log("wants to read file...", toolCall.function.arguments)
-		let output = readFile(toolCall.function.arguments)
-		console.log("read file", output)
-		messages.push({
-			role: 'tool',
-			tool_name: 'read_file',
-			content: output.success ? output.content : output.error,
-		})
-	}
+const TOOL_FUNCTIONS = {
+  read_file: (args) => {
+    const output = readFile(args)
+    return output.success ? output.content : output.error
+  },
+  write_file: (args) => {
+    writeFile(args)
+    return 'success'
+  },
+}
 
-	else if (toolCall.function.name == 'write_file'){
-		loopAround = true
+export function callFunction(toolCall, part, loopAround) {
+  const name = toolCall.function.name
+  const args = toolCall.function.arguments
 
-		if (!toolCall.function.arguments.file_path){
-			messages.push({
-				role: 'user',
-				content: "Tool call failed because argument 'file_path' was not there. If you used a different parameter name, re-do tool call with 'file_path' as argument"
-			})
-			return
-		}
+  console.log('Dawg wants to call: ', name)
 
-		if (!toolCall.function.arguments.content){
-			messages.push({
-				role: 'user',
-				content: "Tool call failed because argument 'content' was not there. If you used a different parameter name, re-do tool call with 'file_path' as argument"
-			})
-			return
-		}
+  if (!TOOL_FUNCTIONS[name]) {
+    console.log(`Unknown tool: ${name}`)
+    return
+  }
 
-		messages.push(part.message)
-		console.log("wants to write file...", toolCall.function.arguments)
-		let output = writeFile(toolCall.function.arguments)
-		messages.push({
-			role: 'tool',
-			tool_name: 'write_file',
-			content: 'success'
-		})
-	}
+  // Validate required args
+  const requiredArgs = REQUIRED_ARGS[name] ?? []
+  for (const arg of requiredArgs) {
+    if (!args[arg]) {
+      messages.push({
+        role: 'user',
+        content: `Tool call failed because argument '${arg}' was not there. If you used a different parameter name, re-do tool call with '${arg}' as argument`
+      })
+      return
+    }
+  }
+
+  loopAround()
+  messages.push(part.message)
+  console.log(`wants to call ${name}...`, args)
+
+  const result = TOOL_FUNCTIONS[name](args)
+
+  messages.push({
+    role: 'tool',
+    tool_name: name,
+    content: result,
+  })
 }
