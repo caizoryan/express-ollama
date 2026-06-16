@@ -2,6 +2,10 @@
   "name": "express-ollama",
   "version": "1.0.0",
   "main": "index.js",
+	"type": "module",
+	"bin": {
+    "loop": "./loop.js"
+  },
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
   },
