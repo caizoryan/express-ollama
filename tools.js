@@ -13,6 +13,22 @@ export const createTool = ({name, description, parameters}) => ({
   function: { name, description, parameters }
 });
 
+
+export function toolToMarkdown(tool) {
+  let markdown = `## ${tool.name}\n`;
+  markdown += `**Description:** ${tool.description}\n\n`;
+  markdown += "**Parameters:**\n";
+  
+  for (const [param, details] of Object.entries(tool.parameters.properties)) {
+    markdown += `- **${param}** (${details.type}): ${details.description}\n`;
+    if (tool.parameters.required.includes(param)) {
+      markdown += `  - *Required*\n`;
+    }
+  }
+  
+  return markdown;
+}
+
 export const readFileTool = {
   name: "read",
   description: "Read the contents of a file from the local filesystem.",
@@ -60,19 +76,42 @@ export const listFilesTool = {
   })
 };
 
-export let tools = [readFileTool, listFilesTool, writeFileTool]
+export const appendFileTool = {
+  name: "append",
+  description: "Append content to the end of a file.",
+  parameters: {
+    type: "object",
+    properties: {
+      file_path: { type: "string", description: "Path to the file to append to." },
+      content: { type: "string", description: "Content to append to the file." },
+    },
+    required: ["file_path", "content"]
+  },
+  execute: withErrorHandling(({ file_path, content }) => {
+    fs.appendFileSync(file_path, content);
+    return `bytesAppended: ${Buffer.byteLength(content)}`;
+  })
+};
 
-export function toolToMarkdown(tool) {
-  let markdown = `## ${tool.name}\n`;
-  markdown += `**Description:** ${tool.description}\n\n`;
-  markdown += "**Parameters:**\n";
-  
-  for (const [param, details] of Object.entries(tool.parameters.properties)) {
-    markdown += `- **${param}** (${details.type}): ${details.description}\n`;
-    if (tool.parameters.required.includes(param)) {
-      markdown += `  - *Required*\n`;
-    }
-  }
-  
-  return markdown;
-}
+export const replaceFileTool = {
+  name: "replace",
+  description: "Replace a search string with a replace string in a file.",
+  parameters: {
+    type: "object",
+    properties: {
+      file_path: { type: "string", description: "Path to the file to read." },
+      search_string: { type: "string", description: "String to search for in the file." },
+      replace_string: { type: "string", description: "String to replace the search string with." },
+    },
+    required: ["file_path", "search_string", "replace_string"]
+  },
+  execute: withErrorHandling(({ file_path, search_string, replace_string }) => {
+    let content = fs.readFileSync(file_path, { encoding: 'utf-8' });
+    content = content.replace(search_string, replace_string);
+    fs.writeFileSync(file_path, content);
+    return `Replaced "${search_string}" with "${replace_string}" in ${file_path}`;
+  })
+};
+
+
+export let tools = [readFileTool, listFilesTool, writeFileTool, appendFileTool, replaceFileTool]

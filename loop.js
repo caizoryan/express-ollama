@@ -24,8 +24,6 @@ const ollama = new Ollama({
   host: 'http://100.85.209.5:11434'
 })
 
-
-
 async function callZAPI(messages, onPart) {
 	const res = await fetch('https://api.z.ai/api/paas/v4/chat/completions', {
 			method: 'POST',
@@ -42,6 +40,7 @@ async function callZAPI(messages, onPart) {
 
 				messages,
 				stream: true,
+				top_p: 0.4,
 				tools: tools.map(createTool),
 			}),
 		})

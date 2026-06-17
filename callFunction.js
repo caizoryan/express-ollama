@@ -1,17 +1,15 @@
-import { readFileTool, writeFileTool, listFilesTool } from './tools.js'
+import { readFileTool, writeFileTool, listFilesTool, tools } from './tools.js'
 import { messages } from './message.js'
 
-const REQUIRED_ARGS = {
-  read: readFileTool.parameters.required,
-  write: writeFileTool.parameters.required,
-  list: listFilesTool.parameters.required,
-}
+const REQUIRED_ARGS = tools.reduce((acc, e) => {
+	acc[e.name] = e.parameters.required
+	return acc
+}, {})
 
-const TOOL_FUNCTIONS = {
-  read: readFileTool.execute,
-  write: writeFileTool.execute,
-	list: listFilesTool.execute,
-}
+const TOOL_FUNCTIONS = tools.reduce((acc, e) => {
+	acc[e.name] = e.execute
+	return acc
+}, {})
 
 export function callFunction(toolCall, part, loopAround) {
   const name = toolCall.function.name
