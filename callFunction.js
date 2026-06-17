@@ -1,27 +1,16 @@
-import { readFile, writeFile, listFiles, readFileTool, writeFileTool, listFilesTool } from './tools.js'
+import { readFileTool, writeFileTool, listFilesTool } from './tools.js'
 import { messages } from './message.js'
 
 const REQUIRED_ARGS = {
-  read_file: readFileTool.function.parameters.required,
-  write_file: writeFileTool.function.parameters.required,
-  list_files: listFilesTool.function.parameters.required,
+  read: readFileTool.parameters.required,
+  write: writeFileTool.parameters.required,
+  list: listFilesTool.parameters.required,
 }
 
 const TOOL_FUNCTIONS = {
-  read_file: (args) => {
-    const output = readFile(args)
-    return output.success ? output.content : output.error
-  },
-
-  write_file: (args) => {
-    writeFile(args)
-    return 'success'
-  },
-
-	list_files: (args) => {
-		let output = listFiles(args)
-		return output.success ? output.files : output.error
-	}
+  read: readFileTool.execute,
+  write: writeFileTool.execute,
+	list: listFilesTool.execute,
 }
 
 export function callFunction(toolCall, part, loopAround) {
@@ -30,11 +19,10 @@ export function callFunction(toolCall, part, loopAround) {
 	if (typeof args == 'string') args = JSON.parse(args)
 
   console.log('Dawg wants to call: ', name, args)
-	// messages.push(part.message)
-	//  messages.push({
-	// 	role: "tool",
-	// 	content: ""+name+" with arguments: " + JSON.stringify(args)
-	// })
+	messages.push({
+		role: "assistant",
+	...part.message
+	})
 
   if (!TOOL_FUNCTIONS[name]) {
     console.log(`Unknown tool: ${name}`)
@@ -56,12 +44,21 @@ export function callFunction(toolCall, part, loopAround) {
 
   loopAround()
 
-  const result = TOOL_FUNCTIONS[name](args)
+  let result = TOOL_FUNCTIONS[name](args)
+	if (result.success) {
+		result = result.content
+		messages.push({
+			role: 'tool',
+			tool_name: name,
+			content: result,
+		})
+	}
 
-	// console.log(name, args, result)
-  messages.push({
-    role: 'tool',
-    tool_name: name,
-    content: result,
-  })
+	else {
+		messages.push({
+			role: 'user',
+			content: "There was an error: " + result.error,
+		})
+	}
+
 }

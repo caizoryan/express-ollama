@@ -2,7 +2,7 @@
 
 import { Ollama } from 'ollama'
 import { auth } from './auth.js'
-import { readFileTool, writeFileTool, listFilesTool } from './tools.js'
+import { createTool, tools } from './tools.js'
 import { callFunction } from './callFunction.js'
 import { messages } from './message.js'
 import fs from 'fs'
@@ -16,6 +16,7 @@ let models = {
 	gemma4b: 'gemma4:e4b',
 	gemma12b: 'gemma4:12b',
 }
+
 let currentModel = models.gemma4b
 let using = 'zAPI'
 
@@ -23,55 +24,61 @@ const ollama = new Ollama({
   host: 'http://100.85.209.5:11434'
 })
 
+
+
 async function callZAPI(messages, onPart) {
 	const res = await fetch('https://api.z.ai/api/paas/v4/chat/completions', {
-		method: 'POST',
-		headers: {
-			'Content-Type': 'application/json',
-			'Authorization': `Bearer ${auth}`,
-		},
-		body: JSON.stringify({
-			// model: 'GLM-4.5-Flash',
-			 model: 'GLM-4-32B-0414-128K',
-			// model: 'GLM-4.7-Flash',
+			method: 'POST',
+			headers: {
+				'Content-Type': 'application/json',
+				'Authorization': `Bearer ${auth}`,
+			},
+			body: JSON.stringify({
+				// model: 'GLM-4.5-Air',
+				// model: 'GLM-4.5-Flash',
+				 model: 'GLM-4-32B-0414-128K',
+				// model: 'GLM-4.7',
+				// model: 'GLM-4.7-Flash',
 
-			messages,
-			stream: true,
-			tools: [readFileTool, writeFileTool, listFilesTool],
-		}),
-	})
+				messages,
+				stream: true,
+				tools: tools.map(createTool),
+			}),
+		})
 
-	const reader = res.body.getReader()
-	const decoder = new TextDecoder()
-	let buffer = ''
+		if (!res.ok) console.log("ERROR: ", res)
 
-	while (true) {
-		const { done, value } = await reader.read()
-		if (done) break
-		buffer += decoder.decode(value, { stream: true })
+		const reader = res.body.getReader()
+		const decoder = new TextDecoder()
+		let buffer = ''
 
-		const lines = buffer.split('\n')
-		buffer = lines.pop()
+		while (true) {
+			const { done, value } = await reader.read()
+			if (done) break
+			buffer += decoder.decode(value, { stream: true })
 
-		for (const line of lines) {
-			const trimmed = line.trim()
-			if (!trimmed.startsWith('data:')) continue
-			const data = trimmed.slice(5).trim()
-			if (data === '[DONE]') return
+			const lines = buffer.split('\n')
+			buffer = lines.pop()
 
-			const json = JSON.parse(data)
-			const delta = json.choices[0].delta
+			for (const line of lines) {
+				const trimmed = line.trim()
+				if (!trimmed.startsWith('data:')) continue
+				const data = trimmed.slice(5).trim()
+				if (data === '[DONE]') return
 
-			// if (delta.content) process.stdout.write(delta.content)
+				const json = JSON.parse(data)
+				const delta = json.choices[0].delta
 
-			onPart({
-				message: {
-					content: delta.content || '',
-					tool_calls: delta.tool_calls || null,
-				},
-			})
+				// if (delta.content) process.stdout.write(delta.content)
+
+				onPart({
+					message: {
+						content: delta.content || '',
+						tool_calls: delta.tool_calls || null,
+					},
+				})
+			}
 		}
-	}
 }
 
 let running = true
@@ -92,7 +99,7 @@ function readFileRange(filePath, fromLine, toLine) {
 	return content.slice(startIndex, end).join('\n');
 }
 
-const replaceTemplate = (inputString) => {
+export const replaceTemplate = (inputString) => {
 	const tokens=inputString.split(' ');
 	const prefix='/readfile:';
 	let modelPrefix = '/model:'; // Defined explicitly for clarity
@@ -210,6 +217,9 @@ let end = new Date()
 console.log('\n')
 console.log('==finished : ', end.toTimeString().slice(0,8) , '==')
 console.log(`===time taken :`, (end - start) /1000 , '==')
+
+let log = JSON.stringify(messages)
+fs.writeFileSync('/Users/aaryan/.llm_sessions/log.json', log)
 
 console.log("\nDONE")
 
