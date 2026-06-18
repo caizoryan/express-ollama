@@ -5,8 +5,7 @@ let toolMsg = `
 ### Remember you have tool calls available to you: 
 
 ${tools.map(toolToMarkdown).join("\n")}
-
-Correctly check the parameters required for the calls. read_file and write_file both take a 'file_path' parameter.`
+`
 
 // Make this based on current session
 // let last_log = fs.readFileSync('/Users/aaryan/.llm_sessions/log.json')

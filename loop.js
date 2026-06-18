@@ -40,7 +40,7 @@ async function callZAPI(messages, onPart) {
 
 				messages,
 				stream: true,
-				top_p: 0.4,
+				// top_p: 0.4,
 				tools: tools.map(createTool),
 			}),
 		})

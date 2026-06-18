@@ -114,4 +114,10 @@ export const replaceFileTool = {
 };
 
 
-export let tools = [readFileTool, listFilesTool, writeFileTool, appendFileTool, replaceFileTool]
+export let tools = [
+	readFileTool,
+	listFilesTool,
+	writeFileTool,
+	appendFileTool,
+	replaceFileTool
+]
