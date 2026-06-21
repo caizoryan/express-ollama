@@ -6,6 +6,7 @@ import { createTool, tools } from './tools.js'
 import { callFunction } from './callFunction.js'
 import { messages } from './message.js'
 import fs from 'fs'
+import { parse } from './minimist.js'
 
 let models = { 
 	lfm: 'lfm2.5:8b',
@@ -80,82 +81,57 @@ async function callZAPI(messages, onPart) {
 		}
 }
 
-let running = true
+let estimateTokens = (text) => Math.ceil(text.length / 4);
+let running = false
 let iterations = 0
 let start = new Date()
 
-function readFileRange(filePath, fromLine, toLine) {
-	let content = fs.readFileSync(filePath, {encoding: 'utf8'})
+let parsed = parse(process.argv, {
+	boolean: ['r', 'running'],
+	alias: 
+	{
+		s: 'session',
+		p: 'prompt',
+		r: 'running',
+		l: 'list',
+	}
+})
 
-	if (!fromLine || fromLine < 1) return content;
-
-	content = content.split('\n');
-
-
-	const startIndex = Math.max(0, parseInt(fromLine) - 1); // Convert line number to index
-	const end = parseInt(toLine) + 1;
-
-	return content.slice(startIndex, end).join('\n');
+if (parsed.running) {
+	running = true
 }
 
-export const replaceTemplate = (inputString) => {
-	const tokens=inputString.split(' ');
-	const prefix='/readfile:';
-	let modelPrefix = '/model:'; // Defined explicitly for clarity
-	let resultString='';
+if (parsed.list) {
+	const sessionPath = `/Users/aaryan/.llm_sessions/`
+	console.log(
+		fs.readdirSync(sessionPath, {withFileTypes: true})
+			.map(e => e.isDirectory() ? undefined : e.name)
+			.filter(e => e!=undefined)
+			.join("\n")
+	)
+}
 
-	for (const token of tokens){
-
-		if (token.includes(modelPrefix)){
-			const startIndex = token.indexOf(modelPrefix);
-			let modelNameCandidate = token.substring(startIndex + modelPrefix.length).trim();
-
-			if (models[modelNameCandidate]) {
-				const newModelKey = modelNameCandidate;
-				if (currentModel !== models[newModelKey]) {
-					console.log(`Setting current model from ${currentModel} to ${models[newModelKey]} based on input token.`);
-					currentModel = models[newModelKey];
+let loadSession = sessionPath => {
+		try {
+				const sessionData = fs.readFileSync(sessionPath, 'utf8');
+				const sessionMessages = JSON.parse(sessionData);
+				if (Array.isArray(sessionMessages)) {
+						sessionMessages.forEach(message => messages.push(message));
 				}
-			}
+		} catch (error) {
+			console.log("Session File don't exist or smth")
 		}
+}
 
-		else if (token.includes(prefix)){
-			const startIndex = token.indexOf(prefix);
-			let before = token.slice(0, startIndex)
-			let filePath = token.substring(startIndex + prefix.length).trim();
+if (parsed.session) {
+	const sessionPath = `/Users/aaryan/.llm_sessions/${parsed.session}.json`;
+	loadSession(sessionPath)
+}
 
-			if (filePath){
-				let lineStart = -1
-				let lineEnd = -1
-				// check if there is a line numbers
-				try {
-					let split = filePath.split(':')
-					if (split.length > 1){
-						filePath = split[0]
-						let numbers = split[1].split('-')
-						lineStart = numbers[0]
-						lineEnd = numbers[1]
-					}
-					const fileContent = readFileRange(filePath, lineStart, lineEnd);
-					resultString += (before + fileContent)
-				} catch(error){
-					console.error(`Errorreadingfile${filePath}:`,error);
-					resultString+=`[ERRORREADINGFILE:${filePath}]`;
-				}
-			}
-		} else {
-			resultString+=token + " ";
-		}
-	}
-
-	return resultString;
-};
-
-if (process.argv[2]) {
+if (parsed.prompt) {
 	messages.push({
 		role: 'user',
-		content: replaceTemplate(process.argv[2])
-		// content: (process.argv[2])
+		content: parsed.prompt
 	})
 }
 
@@ -218,7 +194,7 @@ console.log('==finished : ', end.toTimeString().slice(0,8) , '==')
 console.log(`===time taken :`, (end - start) /1000 , '==')
 
 let log = JSON.stringify(messages)
-fs.writeFileSync('/Users/aaryan/.llm_sessions/log.json', log)
+fs.writeFileSync(`/Users/aaryan/.llm_sessions/${parsed.session ? parsed.session : 'log'}.json`, log)
 
 console.log("\nDONE")
 
